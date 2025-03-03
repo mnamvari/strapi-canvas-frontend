@@ -3,9 +3,7 @@ import Canvas from "../components/Canvas";
 
 const CanvasPage: React.FC = () => {
   return (
-    <div className="h-screen">
     <Canvas />
-    </div>
   );
 };
 
