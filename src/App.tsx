@@ -1,46 +1,27 @@
-import { GitHubBanner, Refine, WelcomePage } from "@refinedev/core";
-import { DevtoolsPanel, DevtoolsProvider } from "@refinedev/devtools";
-import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
+import { Refine } from "@refinedev/core";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+// import Canvas from "./components/Canvas";
+import TestPage from "./pages/TestPage"; 
+import CanvasPage from "./pages/CanvasPage";
 
-import routerBindings, {
-  DocumentTitleHandler,
-  UnsavedChangesNotifier,
-} from "@refinedev/react-router";
-import { DataProvider } from "@refinedev/strapi-v4";
-import { BrowserRouter, Route, Routes } from "react-router";
-import "./App.css";
-import { authProvider, axiosInstance } from "./authProvider";
-import { API_URL } from "./constants";
-
-function App() {
+const App = () => {
   return (
-    <BrowserRouter>
-      <GitHubBanner />
-      <RefineKbarProvider>
-        <DevtoolsProvider>
-          <Refine
-            authProvider={authProvider}
-            dataProvider={DataProvider(API_URL + `/api`, axiosInstance)}
-            routerProvider={routerBindings}
-            options={{
-              syncWithLocation: true,
-              warnWhenUnsavedChanges: true,
-              useNewQueryKeys: true,
-              projectId: "bbfHdX-PnE04n-rToIo0",
-            }}
-          >
-            <Routes>
-              <Route index element={<WelcomePage />} />
-            </Routes>
-            <RefineKbar />
-            <UnsavedChangesNotifier />
-            <DocumentTitleHandler />
-          </Refine>
-          <DevtoolsPanel />
-        </DevtoolsProvider>
-      </RefineKbarProvider>
-    </BrowserRouter>
+      <Router>
+      <Refine>
+      <div className="p-6">
+        <h1 className="text-xl font-bold mb-4">Real-Time Canvas App12</h1>
+          <Routes>
+              {/* Default route for the Canvas */}
+              <Route path="/" element={<CanvasPage />} />
+
+              {/* New route for the TestPage */}
+              <Route path="/test" element={<TestPage />} />
+          </Routes>
+      </div>
+    </Refine>
+    </Router>
+
   );
-}
+};
 
 export default App;
