@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import useRealTimeCanvas from "./useRealTimeCanvas";
+import {BACKEND_STRAPI_BASE_URL} from "../constants";
 
 interface Point {
   x: number;
@@ -25,7 +26,7 @@ interface UseCanvasProps {
 
 const useCanvas = (props?: UseCanvasProps) => {
   const canvasId = props?.canvasId || "global-canvas";
-  const strapiBaseUrl = props?.strapiBaseUrl || "http://localhost:1337";
+  const strapiBaseUrl = props?.strapiBaseUrl || BACKEND_STRAPI_BASE_URL;
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<Tool>("pen");
@@ -45,7 +46,7 @@ const useCanvas = (props?: UseCanvasProps) => {
 
   const startDrawing = (point: Point) => {
     if (!isConnected) return;
-    
+
     setIsDrawing(true);
 
     const newLine: LineProps = {
@@ -58,40 +59,24 @@ const useCanvas = (props?: UseCanvasProps) => {
       globalCompositeOperation: tool === "eraser" ? "destination-out" : "source-over",
     };
 
-      // Add line locally first for responsive UI
-        const newLineIndex = lines.length;
-        currentLineIndexRef.current = newLineIndex;
+    currentLineIndexRef.current = lines.length;
 
     // Send the new line to the server
     drawLine(newLine);
-    // currentLineIndexRef.current = lines.length;
   };
 
   const draw = (point: Point) => {
     if (!isDrawing || !isConnected || currentLineIndexRef.current === null) return;
-    
+
   // Create updated points array including the new point
   const updatedPoints = [
     ...lines[currentLineIndexRef.current]?.points || [],
     point.x,
     point.y
   ];
-  
+
   // Send the update to the server
   updateLine(currentLineIndexRef.current, updatedPoints);
-
-    // // For local points update (faster response)
-    // if (currentLineIndexRef.current !== null && currentLineIndexRef.current < lines.length) {
-    //   // Create updated points array including the new point
-    //   const updatedPoints = [
-    //     ...lines[currentLineIndexRef.current].points,
-    //     point.x,
-    //     point.y
-    //   ];
-
-    //   // Send the update to the server
-    //   updateLine(currentLineIndexRef.current, updatedPoints);
-    // }
   };
 
   const stopDrawing = () => {
