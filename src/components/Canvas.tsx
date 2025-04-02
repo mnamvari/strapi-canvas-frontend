@@ -106,6 +106,29 @@ const Canvas: React.FC = () => {
         draw(point);
     };
 
+    const handleTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        if (!isConnected) return;
+        e.evt.preventDefault(); // Prevent scrolling
+        const touch = e.evt.touches[0];
+        const stage = e.target.getStage();
+        if (stage) {
+            const pos = stage.pointerPos || { x: 0, y: 0 };
+            startDrawing(pos);
+        }
+    };
+
+    const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        if (!isConnected) return;
+        e.evt.preventDefault(); // Prevent scrolling
+        const touch = e.evt.touches[0];
+        const stage = e.target.getStage();
+        if (stage) {
+            const pos = stage.pointerPos || { x: 0, y: 0 };
+            draw(pos);
+        }
+    };
+
+
     return (
         <div className="flex flex-col">
             {/* Toolbar */}
@@ -206,8 +229,8 @@ const Canvas: React.FC = () => {
                     onMouseDown={handleMouseDown}
                     onMousemove={handleMouseMove}
                     onMouseup={stopDrawing}
-                    // onTouchStart={handleMouseDown}
-                    // onTouchMove={handleMouseMove}
+                    // onTouchStart={handleTouchStart}
+                    // onTouchMove={handleTouchMove}
                     onTouchEnd={stopDrawing}
                     ref={stageRef}
                     className="border border-gray-200"
@@ -215,7 +238,7 @@ const Canvas: React.FC = () => {
                     <Layer>
                         {lines.map((line, i) => (
                             <Line
-                                key={i}
+                                key={line.id || i}
                                 points={line.points}
                                 stroke={line.stroke}
                                 strokeWidth={line.strokeWidth}

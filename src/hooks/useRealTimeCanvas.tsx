@@ -55,19 +55,21 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     });
 
     socketInstance.on("line-added", (line: LineProps) => {
-      console.log("Line added:", line);
+      console.log("Line added from server:", line);
       setLines(prevLines => [...prevLines, line]);
     });
 
-    socketInstance.on("line-updated", ({ lineIndex, points }: { lineIndex: number; points: number[] }) => {
-      console.log("Line updated:", lineIndex, points);
+    socketInstance.on("line-updated", ({ lineId, points }: { lineId: string; points: number[] }) => {
+      console.log("Line updated:", lineId, points);
       setLines(prevLines => {
-        const newLines = [...prevLines];
-        if (newLines[lineIndex]) {
+        const lineIndex = prevLines.findIndex(line => line.id === lineId);
+        if (lineIndex !== -1) {
+          const newLines = [...prevLines];
           newLines[lineIndex] = { ...newLines[lineIndex], points };
+          return newLines;
         }
-        return newLines;
-      });
+        return prevLines;
+       });
     });
 
     socketInstance.on("canvas-cleared", () => {
@@ -85,10 +87,10 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
   const drawLine = useCallback(
     (line: LineProps) => {
       if (socket && isConnected) {
-        setLines(prevLines => [...prevLines, line]);
-
-        console.log("Sending draw event:", line);
+        console.log("Sending draw event to server:", line);
         socket.emit("draw", { canvasId, line });
+
+        setLines(prevLines => [...prevLines, line]);
       }
     },
     [socket, isConnected, canvasId]
@@ -96,18 +98,19 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
 
   // Update an existing line
   const updateLine = useCallback(
-    (lineIndex: number, points: number[]) => {
+    (lineId: string, points: number[]) => {
       if (socket && isConnected) {
         setLines(prevLines => {
+          const lineIndex = prevLines.findIndex(line => line.id === lineId);
+          if (lineIndex !== -1) {
             const newLines = [...prevLines];
-            if (newLines[lineIndex]) {
-              newLines[lineIndex] = { ...newLines[lineIndex], points };
-            }
+            newLines[lineIndex] = { ...newLines[lineIndex], points };
             return newLines;
-          });
-    
-        console.log("Sending update-line event:", lineIndex, points);
-        socket.emit("update-line", { canvasId, lineIndex, points });
+          }
+          return prevLines;
+        });    
+        console.log("Sending update-line event:", lineId, points);
+        socket.emit("update-line", { canvasId, lineId, points });
       }
     },
     [socket, isConnected, canvasId]

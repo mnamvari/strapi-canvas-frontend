@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import useRealTimeCanvas from "./useRealTimeCanvas";
 import {BACKEND_STRAPI_BASE_URL} from "../constants";
+import { v4 as uuidv4 } from 'uuid';
 
 interface Point {
   x: number;
@@ -8,6 +9,7 @@ interface Point {
 }
 
 export interface LineProps {
+  id: string;
   points: number[];
   stroke: string;
   strokeWidth: number;
@@ -24,6 +26,10 @@ interface UseCanvasProps {
   strapiBaseUrl?: string;
 }
 
+const generateGuid = (): string => {
+  return uuidv4();
+};
+
 const useCanvas = (props?: UseCanvasProps) => {
   const canvasId = props?.canvasId || "global-canvas";
   const strapiBaseUrl = props?.strapiBaseUrl || BACKEND_STRAPI_BASE_URL;
@@ -32,7 +38,7 @@ const useCanvas = (props?: UseCanvasProps) => {
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(5);
-  const currentLineIndexRef = useRef<number | null>(null);
+  const currentLineIdRef = useRef<string | null>(null);
 
   const {
     lines,
@@ -49,7 +55,11 @@ const useCanvas = (props?: UseCanvasProps) => {
 
     setIsDrawing(true);
 
+    const lineId = generateGuid();
+    currentLineIdRef.current = lineId;
+
     const newLine: LineProps = {
+      id: lineId,
       points: [point.x, point.y],
       stroke: tool === "eraser" ? "#FFFFFF" : color,
       strokeWidth,
@@ -59,29 +69,30 @@ const useCanvas = (props?: UseCanvasProps) => {
       globalCompositeOperation: tool === "eraser" ? "destination-out" : "source-over",
     };
 
-    currentLineIndexRef.current = lines.length;
-
     // Send the new line to the server
     drawLine(newLine);
   };
 
   const draw = (point: Point) => {
-    if (!isDrawing || !isConnected || currentLineIndexRef.current === null) return;
+    if (!isDrawing || !isConnected || currentLineIdRef.current === null) return;
+
+    const lineIndex = lines.findIndex(line => line.id === currentLineIdRef.current);
+    if (lineIndex === -1) return;
 
   // Create updated points array including the new point
   const updatedPoints = [
-    ...lines[currentLineIndexRef.current]?.points || [],
+    ...lines[lineIndex].points,
     point.x,
     point.y
   ];
 
   // Send the update to the server
-  updateLine(currentLineIndexRef.current, updatedPoints);
+    updateLine(currentLineIdRef.current, updatedPoints);
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    currentLineIndexRef.current = null;
+    currentLineIdRef.current = null;
   };
 
   const clearCanvas = () => {
