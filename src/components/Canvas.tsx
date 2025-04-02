@@ -236,7 +236,9 @@ const Canvas: React.FC = () => {
                     className="border border-gray-200"
                 >
                     <Layer>
-                        {lines.map((line, i) => (
+                    {[...lines]
+                        .sort((a, b) => a.zIndex - b.zIndex)
+                        .map((line, i) => (
                             <Line
                                 key={line.id || i}
                                 points={line.points}

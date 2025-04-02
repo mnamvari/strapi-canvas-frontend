@@ -72,6 +72,15 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
        });
     });
 
+    socketInstance.on('line-z-index-assigned', ({ lineId, zIndex }) => {
+      console.log("z-index assigned:", zIndex);
+      setLines(prevLines => 
+        prevLines.map(line => 
+          line.id === lineId ? { ...line, zIndex } : line
+        )
+      );
+    });
+
     socketInstance.on("canvas-cleared", () => {
       console.log("Canvas cleared");
       setLines([]);

@@ -11,6 +11,7 @@ interface Point {
 export interface LineProps {
   id: string;
   points: number[];
+  zIndex: number;
   stroke: string;
   strokeWidth: number;
   tension: number;
@@ -61,6 +62,7 @@ const useCanvas = (props?: UseCanvasProps) => {
     const newLine: LineProps = {
       id: lineId,
       points: [point.x, point.y],
+      zIndex: 1,
       stroke: tool === "eraser" ? "#FFFFFF" : color,
       strokeWidth,
       tension: 0.5,
