@@ -11,8 +11,10 @@ import {
     FaLongArrowAltRight,
     FaFont,
     FaDownload,
-    FaTrash
+    FaTrash,
+    FaLock
 } from "react-icons/fa";
+import PrivacySettings from "./PrivacySettings";
 
 const MAX_PARTICIPANTS = 4;
 
@@ -47,6 +49,7 @@ const Canvas: React.FC = () => {
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectTimer, setReconnectTimer] = useState(30);
     const [showTextControls, setShowTextControls] = useState(false);
+    const [privacySettingsOpen, setPrivacySettingsOpen] = useState(false);
 
     // Handle resize
     useEffect(() => {
@@ -342,6 +345,15 @@ const Canvas: React.FC = () => {
 
                 <div className="flex-grow" />
 
+                <button
+                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-gray-200 text-gray-700 flex items-center gap-1"
+                    onClick={() => setPrivacySettingsOpen(true)}
+                    title="Privacy Settings"
+                >
+                    <FaLock size={16} />
+                    <span className="hidden md:inline">Privacy</span>
+                </button>
+
                 <ParticipantDisplay
                     participantCount={participantCount}
                     maxParticipants={MAX_PARTICIPANTS}
@@ -473,6 +485,10 @@ const Canvas: React.FC = () => {
                     </Layer>
                 </Stage>)}
             </div>
+            <PrivacySettings
+                isOpen={privacySettingsOpen}
+                onClose={() => setPrivacySettingsOpen(false)}
+            />
         </div>
     );
 };
