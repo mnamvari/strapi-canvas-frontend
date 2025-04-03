@@ -1,15 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import Konva from "konva";
-import { Stage, Layer, Line } from "react-konva";
-import useCanvas from "../hooks/useCanvas";
+import { Stage, Layer, Line, Rect, Circle, Arrow, Text } from "react-konva";
+import useCanvas, {ShapeProps} from "../hooks/useCanvas";
 import ParticipantDisplay from "./ParticipantDisplay";
-import { FaPencilAlt, FaEraser } from "react-icons/fa";
+import {FaPencilAlt, FaEraser, FaSquare, FaCircle, FaLongArrowAltRight, FaFont} from "react-icons/fa";
 
 const MAX_PARTICIPANTS = 4;
 
 const Canvas: React.FC = () => {
     const {
-        lines,
+        shapes,
         tool,
         color,
         strokeWidth,
@@ -22,6 +22,14 @@ const Canvas: React.FC = () => {
         changeTool,
         changeColor,
         changeStrokeWidth,
+        textValue,
+        setTextValue,
+        textSize,
+        setTextSize,
+        textFont,
+        setTextFont,
+        textWeight,
+        setTextWeight,
     } = useCanvas();
 
     const stageRef = useRef<any>(null);
@@ -29,12 +37,13 @@ const Canvas: React.FC = () => {
     const [stageSize, setStageSize] = useState({ width: 0, height: window.innerHeight });
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectTimer, setReconnectTimer] = useState(30);
+    const [showTextControls, setShowTextControls] = useState(false);
 
     // Handle resize
     useEffect(() => {
         const updateSize = () => {
             if (containerRef.current) {
-                const toolbarHeight = 165; // Approximate height of toolbar
+                const toolbarHeight = tool === "text" ? 210 : 165; // Extra height for text controls
                 const availableHeight = window.innerHeight - toolbarHeight;
 
                 setStageSize({
@@ -52,14 +61,19 @@ const Canvas: React.FC = () => {
         };
     }, []);
 
+    // Toggle text controls visible when text tool selected
+    useEffect(() => {
+        setShowTextControls(tool === "text");
+    }, [tool]);
+
     // Handle connection status changes
     useEffect(() => {
         let intervalId: NodeJS.Timeout | undefined;
-        
+
         if (!isConnected && !reconnecting) {
             setReconnecting(true);
             setReconnectTimer(30);
-            
+
             intervalId = setInterval(() => {
                 setReconnectTimer(prev => {
                     if (prev <= 1) {
@@ -70,16 +84,16 @@ const Canvas: React.FC = () => {
                 });
             }, 1000);
         }
-        
+
         if (isConnected && reconnecting) {
             setReconnecting(false);
             if (intervalId) clearInterval(intervalId);
         }
-        
+
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [isConnected, reconnecting]);    
+    }, [isConnected, reconnecting]);
 
     const colors = [
         "#000000", // Black
@@ -92,6 +106,22 @@ const Canvas: React.FC = () => {
         "#FFA500", // Orange
         "#800080", // Purple
         "#008000", // Dark Green
+    ];
+
+    const fontFamilies = [
+        "Arial",
+        "Helvetica",
+        "Times New Roman",
+        "Courier New",
+        "Verdana",
+        "Georgia"
+    ];
+
+    const fontWeights = [
+        "normal",
+        "bold",
+        "italic",
+        "bold italic"
     ];
 
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -128,6 +158,76 @@ const Canvas: React.FC = () => {
         }
     };
 
+    // Render the appropriate shape based on type
+    const renderShape = (shape: ShapeProps, i: number) => {
+        switch (shape.type) {
+            case "pen":
+            case "eraser":
+                return (
+                    <Line
+                        key={shape.id || i}
+                        points={shape.points}
+                        stroke={shape.stroke}
+                        strokeWidth={shape.strokeWidth}
+                        tension={shape.tension}
+                        lineCap={shape.lineCap}
+                        globalCompositeOperation={
+                            shape.stroke === "#ffffff" ? "destination-out" : "source-over"
+                        }
+                    />
+                );
+            case "rectangle":
+                return (
+                    <Rect
+                        key={shape.id || i}
+                        x={shape.x}
+                        y={shape.y}
+                        width={shape.width}
+                        height={shape.height}
+                        stroke={shape.stroke}
+                        strokeWidth={shape.strokeWidth}
+                        dash={shape.dash}
+                    />
+                );
+            case "circle":
+                return (
+                    <Circle
+                        key={shape.id || i}
+                        x={shape.x}
+                        y={shape.y}
+                        radius={shape.radius}
+                        stroke={shape.stroke}
+                        strokeWidth={shape.strokeWidth}
+                    />
+                );
+            case "arrow":
+                return (
+                    <Arrow
+                        key={shape.id || i}
+                        points={shape.points || []}
+                        stroke={shape.stroke}
+                        strokeWidth={shape.strokeWidth}
+                        pointerLength={10}
+                        pointerWidth={10}
+                    />
+                );
+            case "text":
+                return (
+                    <Text
+                        key={shape.id || i}
+                        x={shape.x}
+                        y={shape.y}
+                        text={shape.text}
+                        fontSize={shape.fontSize}
+                        fontFamily={shape.fontFamily}
+                        fontStyle={shape.fontStyle}
+                        fill={shape.stroke}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
 
     return (
         <div className="flex flex-col">
@@ -153,16 +253,53 @@ const Canvas: React.FC = () => {
                         className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "pen" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
                         onClick={() => changeTool("pen")}
                         disabled={!isConnected}
+                        title="Pen"
                     >
-                    <FaPencilAlt size={20} />
+                        <FaPencilAlt size={20} />
                     </button>
 
                     <button
                         className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "eraser" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
                         onClick={() => changeTool("eraser")}
                         disabled={!isConnected}
+                        title="Eraser"
                     >
-                    <FaEraser size={20} />
+                        <FaEraser size={20} />
+                    </button>
+                    <button
+                        className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "rectangle" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                        onClick={() => changeTool("rectangle")}
+                        disabled={!isConnected}
+                        title="Rectangle"
+                    >
+                        <FaSquare size={20} />
+                    </button>
+
+                    <button
+                        className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "circle" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                        onClick={() => changeTool("circle")}
+                        disabled={!isConnected}
+                        title="Circle"
+                    >
+                        <FaCircle size={20} />
+                    </button>
+
+                    <button
+                        className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "arrow" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                        onClick={() => changeTool("arrow")}
+                        disabled={!isConnected}
+                        title="Arrow"
+                    >
+                        <FaLongArrowAltRight size={20} />
+                    </button>
+
+                    <button
+                        className={`px-2 py-1 text-sm md:text-base md:px-3 rounded ${tool === "text" ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                        onClick={() => changeTool("text")}
+                        disabled={!isConnected}
+                        title="Text"
+                    >
+                        <FaFont size={20} />
                     </button>
                 </div>
 
@@ -198,6 +335,66 @@ const Canvas: React.FC = () => {
                 </button>
             </div>
 
+            {/* Text Controls */}
+            {showTextControls && (
+                <div className="bg-gray-100 p-4 border-t border-gray-300">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="text-input" className="text-sm font-medium">Text:</label>
+                            <input
+                                id="text-input"
+                                type="text"
+                                className="border border-gray-300 rounded px-2 py-1 w-40 md:w-60"
+                                value={textValue}
+                                onChange={(e) => setTextValue(e.target.value)}
+                                placeholder="Enter text here"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="font-size" className="text-sm font-medium">Size:</label>
+                            <input
+                                id="font-size"
+                                type="number"
+                                min="8"
+                                max="72"
+                                className="border border-gray-300 rounded px-2 py-1 w-16"
+                                value={textSize}
+                                onChange={(e) => setTextSize(Number(e.target.value))}
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="font-family" className="text-sm font-medium">Font:</label>
+                            <select
+                                id="font-family"
+                                className="border border-gray-300 rounded px-2 py-1"
+                                value={textFont}
+                                onChange={(e) => setTextFont(e.target.value)}
+                            >
+                                {fontFamilies.map(font => (
+                                    <option key={font} value={font}>{font}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="font-weight" className="text-sm font-medium">Style:</label>
+                            <select
+                                id="font-weight"
+                                className="border border-gray-300 rounded px-2 py-1"
+                                value={textWeight}
+                                onChange={(e) => setTextWeight(e.target.value)}
+                            >
+                                {fontWeights.map(weight => (
+                                    <option key={weight} value={weight}>{weight}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Canvas */}
             <div className="flex-grow bg-white relative" ref={containerRef}>
                 {/* Disconnection Overlay */}
@@ -221,7 +418,7 @@ const Canvas: React.FC = () => {
                         </div>
                     </div>
                 )}
-                
+
                 {stageSize.width > 0 && stageSize.height > 0 && (
                 <Stage
                     width={stageSize.width}
@@ -236,22 +433,9 @@ const Canvas: React.FC = () => {
                     className="border border-gray-200"
                 >
                     <Layer>
-                    {[...lines]
-                        .sort((a, b) => a.zIndex - b.zIndex)
-                        .map((line, i) => (
-                            <Line
-                                key={line.id || i}
-                                points={line.points}
-                                stroke={line.stroke}
-                                strokeWidth={line.strokeWidth}
-                                tension={line.tension}
-                                lineCap={line.lineCap}
-                                // lineJoin={line.linejoin}
-                                globalCompositeOperation={
-                                    line.stroke === "#ffffff" ? "destination-out" : "source-over"
-                                }
-                            />
-                        ))}
+                        {shapes
+                            .sort((a, b) => a.zIndex - b.zIndex)
+                            .map((shape, i) => renderShape(shape, i))}
                     </Layer>
                 </Stage>)}
             </div>

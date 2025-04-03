@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { LineProps } from "./useCanvas";
+import { ShapeProps } from "./useCanvas";
 
 interface UseRealTimeCanvasProps {
   canvasId: string;
@@ -8,13 +8,13 @@ interface UseRealTimeCanvasProps {
 }
 
 interface CanvasState {
-  lines: LineProps[];
+  shapes: ShapeProps[];
   participantCount: number;
 }
 
 const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [lines, setLines] = useState<LineProps[]>([]);
+  const [shapes, setShapes] = useState<ShapeProps[]>([]);
   const [participantCount, setParticipantCount] = useState(1);
   const [participantId, setParticipantId] = useState("");
   const [isConnected, setIsConnected] = useState(false);
@@ -28,12 +28,12 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     });
 
     setSocket(socketInstance);
-    
+
     socketInstance.on("connect", () => {
       console.log("Socket connected:", socketInstance.id);
       setIsConnected(true);
       setParticipantId(socketInstance.id || `user-${Math.floor(Math.random() * 1000)}`);
-      
+
       // Join the canvas room
       socketInstance.emit("join-canvas", canvasId);
     });
@@ -45,7 +45,7 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
 
     socketInstance.on("canvas-state", (state: CanvasState) => {
       console.log("Received canvas state:", state);
-      setLines(state.lines);
+      setShapes(state.shapes);
       setParticipantCount(state.participantCount);
     });
 
@@ -54,36 +54,49 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
       setParticipantCount(count);
     });
 
-    socketInstance.on("line-added", (line: LineProps) => {
-      console.log("Line added from server:", line);
-      setLines(prevLines => [...prevLines, line]);
+    socketInstance.on("shape-added", (shape: ShapeProps) => {
+      console.log("Shape added:", shape);
+      setShapes(prevShapes => [...prevShapes, shape]);
     });
 
-    socketInstance.on("line-updated", ({ lineId, points }: { lineId: string; points: number[] }) => {
-      console.log("Line updated:", lineId, points);
-      setLines(prevLines => {
-        const lineIndex = prevLines.findIndex(line => line.id === lineId);
-        if (lineIndex !== -1) {
-          const newLines = [...prevLines];
-          newLines[lineIndex] = { ...newLines[lineIndex], points };
-          return newLines;
+    // socketInstance.on("line-updated", ({ lineId, points }: { lineId: string; points: number[] }) => {
+    //   console.log("Line updated:", lineId, points);
+    //   setLines(prevLines => {
+    //     const lineIndex = prevLines.findIndex(line => line.id === lineId);
+    //     if (lineIndex !== -1) {
+    //       const newLines = [...prevLines];
+    //       newLines[lineIndex] = { ...newLines[lineIndex], points };
+    //       return newLines;
+    //     }
+    //     return prevLines;
+    //    });
+    // });
+
+    socketInstance.on("shape-updated", ({ shapeId, updatedShape }: { shapeId: string; updatedShape: ShapeProps }) => {
+      console.log("Shape updated:", shapeId, updatedShape);
+      setShapes(prevShapes => {
+        const newShapes = [...prevShapes];
+        const shapeIndex = newShapes.findIndex(s => s.id === shapeId);
+        if (newShapes[shapeIndex]) {
+          newShapes[shapeIndex] = updatedShape;
         }
-        return prevLines;
-       });
+        return newShapes;
+      });
     });
 
-    socketInstance.on('line-z-index-assigned', ({ lineId, zIndex }) => {
+
+    socketInstance.on('shape-z-index-assigned', ({ shapeId, zIndex }) => {
       console.log("z-index assigned:", zIndex);
-      setLines(prevLines => 
-        prevLines.map(line => 
-          line.id === lineId ? { ...line, zIndex } : line
+      setShapes(prevShapes =>
+          prevShapes.map(shape =>
+              shape.id === shapeId ? { ...shape, zIndex } : shape
         )
       );
     });
 
     socketInstance.on("canvas-cleared", () => {
       console.log("Canvas cleared");
-      setLines([]);
+      setShapes([]);
     });
 
     return () => {
@@ -93,36 +106,39 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
   }, [canvasId, strapiBaseUrl]);
 
   // Send drawing events to the server
-  const drawLine = useCallback(
-    (line: LineProps) => {
-      if (socket && isConnected) {
-        console.log("Sending draw event to server:", line);
-        socket.emit("draw", { canvasId, line });
+  const drawShape = useCallback(
+      (shape: ShapeProps) => {
+        if (socket && isConnected) {
+          setShapes(prevShapes => [...prevShapes, shape]);
 
-        setLines(prevLines => [...prevLines, line]);
-      }
-    },
-    [socket, isConnected, canvasId]
+          console.log("Sending draw-shape event to server:", shape);
+          socket.emit("draw-shape", { canvasId, shape });
+        }
+      },
+      [socket, isConnected, canvasId]
   );
 
-  // Update an existing line
-  const updateLine = useCallback(
-    (lineId: string, points: number[]) => {
-      if (socket && isConnected) {
-        setLines(prevLines => {
-          const lineIndex = prevLines.findIndex(line => line.id === lineId);
-          if (lineIndex !== -1) {
-            const newLines = [...prevLines];
-            newLines[lineIndex] = { ...newLines[lineIndex], points };
-            return newLines;
-          }
-          return prevLines;
-        });    
-        console.log("Sending update-line event:", lineId, points);
-        socket.emit("update-line", { canvasId, lineId, points });
-      }
-    },
-    [socket, isConnected, canvasId]
+  // Update an existing shape
+  const updateShape = useCallback(
+      (shapeId: string, updatedShape: ShapeProps) => {
+        if (socket && isConnected) {
+          setShapes(prevShapes => {
+            const shapeIndex = prevShapes.findIndex(s => s.id === shapeId);
+            if (shapeIndex !== -1) {
+              const newShapes = [...prevShapes];
+              if (newShapes[shapeIndex]) {
+                newShapes[shapeIndex] = updatedShape;
+              }
+              return newShapes;
+            }
+            return prevShapes;
+          });
+
+          console.log("Sending update-shape event:", shapeId, updatedShape);
+          socket.emit("update-shape", { canvasId, shapeId, updatedShape });
+        }
+      },
+      [socket, isConnected, canvasId]
   );
 
   // Clear the canvas
@@ -134,12 +150,12 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
   }, [socket, isConnected, canvasId]);
 
   return {
-    lines,
+    shapes,
     participantCount,
     participantId,
     isConnected,
-    drawLine,
-    updateLine,
+    drawShape,
+    updateShape,
     clearCanvas,
   };
 };
