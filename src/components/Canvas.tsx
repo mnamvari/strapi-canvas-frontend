@@ -3,7 +3,16 @@ import Konva from "konva";
 import { Stage, Layer, Line, Rect, Circle, Arrow, Text } from "react-konva";
 import useCanvas, {ShapeProps} from "../hooks/useCanvas";
 import ParticipantDisplay from "./ParticipantDisplay";
-import {FaPencilAlt, FaEraser, FaSquare, FaCircle, FaLongArrowAltRight, FaFont} from "react-icons/fa";
+import {
+    FaPencilAlt,
+    FaEraser,
+    FaSquare,
+    FaCircle,
+    FaLongArrowAltRight,
+    FaFont,
+    FaDownload,
+    FaTrash
+} from "react-icons/fa";
 
 const MAX_PARTICIPANTS = 4;
 
@@ -32,7 +41,7 @@ const Canvas: React.FC = () => {
         setTextWeight,
     } = useCanvas();
 
-    const stageRef = useRef<any>(null);
+    const stageRef = useRef<Konva.Stage>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [stageSize, setStageSize] = useState({ width: 0, height: window.innerHeight });
     const [reconnecting, setReconnecting] = useState(false);
@@ -157,6 +166,18 @@ const Canvas: React.FC = () => {
             draw(pos);
         }
     };
+
+    const downloadImage = () => {
+        if (!stageRef.current) return;
+        const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
+        const link = document.createElement('a');
+        link.download = `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
 
     // Render the appropriate shape based on type
     const renderShape = (shape: ShapeProps, i: number) => {
@@ -325,13 +346,26 @@ const Canvas: React.FC = () => {
                     participantCount={participantCount}
                     maxParticipants={MAX_PARTICIPANTS}
                 />
+                <div className="border-l border-gray-300 h-8 mx-1 hidden md:block" />
 
                 <button
-                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-red-500 text-white"
+                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-green-500 text-white flex items-center gap-1"
+                    onClick={downloadImage}
+                    disabled={!isConnected}
+                    title="Download as PNG"
+                >
+                    <FaDownload size={16} />
+                    <span className="hidden md:inline">PNG</span>
+                </button>
+
+                <button
+                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-red-500 text-white flex items-center gap-1"
                     onClick={clearCanvas}
                     disabled={!isConnected}
+                    title="Clear Canvas"
                 >
-                    Clear
+                    <FaTrash size={16} />
+                    <span className="hidden md:inline">Clear</span>
                 </button>
             </div>
 
