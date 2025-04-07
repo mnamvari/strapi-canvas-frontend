@@ -1,5 +1,9 @@
 {
     "routes": [
-      { "src": "/[^/.]+", "dest": "/", "status": 200 }
+      { "src": "/login", "dest": "/" },
+      { "src": "/auth/check-email", "dest": "/" },
+      { "src": "/auth/verify", "dest": "/" },
+      { "src": "/access-denied", "dest": "/" },
+      { "src": "/(.*)", "dest": "/" }
     ]
   }
