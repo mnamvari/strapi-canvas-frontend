@@ -67,6 +67,11 @@ const useCanvas = (props?: UseCanvasProps) => {
     clearCanvas: clearCanvasServer,
     participants,
     canvasOwner,
+    canvasSettings,
+    accessRequest,
+    accessPending,
+    updateCanvasSettings,
+    handleAccessApproval,
   } = useRealTimeCanvas({ canvasId, strapiBaseUrl });
 
   const startDrawing = (point: Point) => {
@@ -222,6 +227,11 @@ const useCanvas = (props?: UseCanvasProps) => {
     setTextWeight,
     participants,
     canvasOwner,
+    canvasSettings,
+    accessRequest,
+    accessPending,
+    updateCanvasSettings,
+    handleAccessApproval,
   };
 };
 

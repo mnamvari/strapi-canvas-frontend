@@ -4,6 +4,7 @@ import CanvasPage from "./pages/CanvasPage";
 import LoginPage from "./pages/Login";
 import CheckEmailPage from "./pages/CheckEmail";
 import VerifyToken from "./pages/VerifyToken";
+import AccessDenied from "./pages/AccessDenied";
 import { authProvider } from "./authProvider";
 
 const App = () => {
@@ -15,6 +16,7 @@ const App = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/check-email" element={<CheckEmailPage />} />
               <Route path="/auth/verify" element={<VerifyToken />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="/" element={<CanvasPage />} />
           </Routes>
       </div>

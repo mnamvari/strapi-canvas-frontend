@@ -17,6 +17,8 @@ import {
 } from "react-icons/fa";
 import PrivacySettings from "./PrivacySettings";
 import ParticipantList from "./ParticipantList";
+import AccessRequestNotification from "./AccessRequestNotification";
+import AccessPendingNotification from "./AccessPendingNotification";
 
 
 const MAX_PARTICIPANTS = 4;
@@ -46,6 +48,11 @@ const Canvas: React.FC = () => {
         setTextWeight,
         participants,
         canvasOwner,
+        canvasSettings,
+        accessRequest,
+        accessPending,
+        updateCanvasSettings,
+        handleAccessApproval,
     } = useCanvas();
 
     const stageRef = useRef<Konva.Stage>(null);
@@ -56,6 +63,9 @@ const Canvas: React.FC = () => {
     const [showTextControls, setShowTextControls] = useState(false);
     const [privacySettingsOpen, setPrivacySettingsOpen] = useState(false);
     const { data: identity } = useGetIdentity<{ email: string }>();
+    const [downloadDisabled, setDownloadDisabled] = useState(false);
+
+    const isOwner = identity?.email === canvasOwner;
 
     // Handle resize
     useEffect(() => {
@@ -78,6 +88,12 @@ const Canvas: React.FC = () => {
             window.removeEventListener("resize", updateSize);
         };
     }, []);
+
+    useEffect(() => {
+        if (canvasSettings) {
+            setDownloadDisabled(canvasSettings.disableDownload && !isOwner);
+        }
+    }, [canvasSettings, isOwner]);
 
     // Toggle text controls visible when text tool selected
     useEffect(() => {
@@ -142,6 +158,18 @@ const Canvas: React.FC = () => {
         "bold italic"
     ];
 
+    const handleApprove = () => {
+        if (accessRequest) {
+            handleAccessApproval(accessRequest.requestId, accessRequest.canvasId, true);
+        }
+    };
+
+    const handleDeny = () => {
+        if (accessRequest) {
+            handleAccessApproval(accessRequest.requestId, accessRequest.canvasId, false);
+        }
+    };
+
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
         if (!isConnected) return;
         const pos = e.target.getStage()?.getPointerPosition() || { x: 0, y: 0 };
@@ -178,6 +206,9 @@ const Canvas: React.FC = () => {
 
     const downloadImage = () => {
         if (!stageRef.current) return;
+        if (canvasSettings.disableDownload && !isOwner) {
+            return;
+        }
         const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
         const link = document.createElement('a');
         link.download = `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
@@ -261,6 +292,15 @@ const Canvas: React.FC = () => {
 
     return (
         <div className="flex flex-col">
+            {/* Access notifications */}
+            <AccessRequestNotification
+                isOpen={!!accessRequest}
+                requestData={accessRequest}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
+            />
+
+            <AccessPendingNotification isOpen={accessPending} />
             {/* Toolbar */}
             <div className="bg-gray-100 p-4 flex flex-wrap items-center gap-2 md:gap-4">
                 <div className="flex flex-wrap gap-1 md:gap-2">
@@ -351,15 +391,6 @@ const Canvas: React.FC = () => {
 
                 <div className="flex-grow" />
 
-                <button
-                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-gray-200 text-gray-700 flex items-center gap-1"
-                    onClick={() => setPrivacySettingsOpen(true)}
-                    title="Privacy Settings"
-                >
-                    <FaLock size={16} />
-                    <span className="hidden md:inline">Privacy</span>
-                </button>
-
                 <div className="hidden md:block">
                     <ParticipantList
                         participants={participants}
@@ -378,10 +409,16 @@ const Canvas: React.FC = () => {
                 <div className="border-l border-gray-300 h-8 mx-1 hidden md:block" />
 
                 <button
-                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-green-500 text-white flex items-center gap-1"
+                    className={`px-2 py-1 text-sm md:text-base md:px-3 rounded 
+                    ${downloadDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-500 text-white'} 
+                    flex items-center gap-1`}
                     onClick={downloadImage}
-                    disabled={!isConnected}
-                    title="Download as PNG"
+                    disabled={!isConnected || downloadDisabled}
+                    title={downloadDisabled
+                        ? "Download disabled by canvas owner"
+                        : "Download as PNG"}
                 >
                     <FaDownload size={16} />
                     <span className="hidden md:inline">PNG</span>
@@ -396,6 +433,16 @@ const Canvas: React.FC = () => {
                     <FaTrash size={16} />
                     <span className="hidden md:inline">Clear</span>
                 </button>
+
+                {isOwner && (<button
+                    className="px-2 py-1 text-sm md:text-base md:px-3 rounded bg-gray-200 text-gray-700 flex items-center gap-1"
+                    onClick={() => setPrivacySettingsOpen(true)}
+                    title="Privacy Settings"
+                >
+                    <FaLock size={16} />
+                    <span className="hidden md:inline">Privacy</span>
+                </button>)}
+
             </div>
 
             {/* Text Controls */}
@@ -505,6 +552,9 @@ const Canvas: React.FC = () => {
             <PrivacySettings
                 isOpen={privacySettingsOpen}
                 onClose={() => setPrivacySettingsOpen(false)}
+                isOwner={isOwner}
+                canvasSettings={canvasSettings}
+                onUpdateSettings={updateCanvasSettings}
             />
         </div>
     );

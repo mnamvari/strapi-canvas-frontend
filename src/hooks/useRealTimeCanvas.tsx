@@ -19,6 +19,18 @@ interface Participant {
   isOwner: boolean;
 }
 
+interface CanvasSettings {
+  requireApproval: boolean;
+  autoClear: boolean;
+  autoClearMinutes: number;
+  disableDownload: boolean;
+}
+
+interface AccessRequest {
+  requestId: string;
+  email: string;
+  canvasId: string;
+}
 
 const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -28,13 +40,20 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [canvasOwner, setCanvasOwner] = useState<string | null>(null);
+  const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>({
+    requireApproval: false,
+    autoClear: false,
+    autoClearMinutes: 15,
+    disableDownload: false
+  });
+  const [accessRequest, setAccessRequest] = useState<AccessRequest | null>(null);
+  const [accessPending, setAccessPending] = useState(false);
 
 
   // Initialize socket connection
   useEffect(() => {
     console.log(`Connecting to ${strapiBaseUrl}`);
     const token = localStorage.getItem(TOKEN_KEY);
-
     const socketInstance = io(`${strapiBaseUrl}`, {
       transports: ["websocket"],
       reconnection: true,
@@ -55,6 +74,30 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
       setIsConnected(false);
+    });
+
+    socketInstance.on("canvas-settings-updated", (settings: CanvasSettings) => {
+      console.log("Canvas settings updated:", settings);
+      setCanvasSettings(settings);
+    });
+
+    socketInstance.on("access-request", (request: AccessRequest) => {
+      console.log("Access request received:", request);
+      setAccessRequest(request);
+    });
+
+    socketInstance.on("access-pending", () => {
+      console.log("Access pending owner approval");
+      setAccessPending(true);
+    });
+
+    socketInstance.on("access-granted", () => {
+      setAccessPending(false);
+    });
+
+    socketInstance.on("access-denied", () => {
+      setAccessPending(false);
+      window.location.href = "/access-denied";
     });
 
     socketInstance.on("participants-updated", (data: {
@@ -107,7 +150,6 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
       });
     });
 
-
     socketInstance.on('shape-z-index-assigned', ({ shapeId, zIndex }) => {
       console.log("z-index assigned:", zIndex);
       setShapes(prevShapes =>
@@ -122,6 +164,11 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
       setShapes([]);
     });
 
+    socketInstance.on("canvas-auto-cleared", (data) => {
+      console.log("Canvas auto-cleared:", data.message);
+    });
+
+    // Clean up
     return () => {
       console.log("Disconnecting socket");
       socketInstance.disconnect();
@@ -172,6 +219,25 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     }
   }, [socket, isConnected, canvasId]);
 
+  // Canvas setting
+  const updateCanvasSettings = useCallback(
+      (settings: Partial<CanvasSettings>) => {
+        if (socket && isConnected) {
+          socket.emit("update-canvas-settings", { canvasId, settings });
+        }
+      },
+      [socket, isConnected, canvasId]
+  );
+
+  const handleAccessApproval = useCallback(
+      (requestId: string, canvasId: string, approved: boolean) => {
+        if (socket && isConnected) {
+          socket.emit("approve-access", { requestId, canvasId, approved });
+          setAccessRequest(null);
+        }
+      },
+      [socket, isConnected]
+  );
   return {
     shapes,
     participantCount,
@@ -182,6 +248,11 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     clearCanvas,
     participants,
     canvasOwner,
+    canvasSettings,
+    accessRequest,
+    accessPending,
+    updateCanvasSettings,
+    handleAccessApproval,
   };
 };
 
