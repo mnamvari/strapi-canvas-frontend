@@ -34,12 +34,12 @@ const VerifyToken: React.FC = () => {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-        <h1 className="text-2xl font-bold mb-4">Verifying Access</h1>
-    <p>{status}</p>
-    </div>
-    </div>
-);
+            <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
+                <h1 className="text-2xl font-bold mb-4">Verifying Access</h1>
+                <p>{status}</p>
+            </div>
+        </div>
+    );
 };
 
 export default VerifyToken;

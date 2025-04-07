@@ -1,35 +1,31 @@
 import type { AuthProvider } from "@refinedev/core";
-import { AuthHelper } from "@refinedev/strapi-v4";
 import axios from "axios";
 import { API_URL, TOKEN_KEY } from "./constants";
 
 export const axiosInstance = axios.create();
-const strapiAuthHelper = AuthHelper(API_URL + "/api");
 
 export const authProvider: AuthProvider = {
-  login: async ({ email, password }) => {
-    const { data, status } = await strapiAuthHelper.login(email, password);
-    if (status === 200) {
-      localStorage.setItem(TOKEN_KEY, data.jwt);
-
-      // set header axios instance
-      axiosInstance.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${data.jwt}`;
-
+  login: async ({ email }) => {
+    try {
+      console.log("Sending login request to:", `${API_URL}/api/auth/magic-link/send`);
+      await axios.post(`${API_URL}/api/auth/magic-link/send`, { email });
+      console.log("Login request successful");
       return {
         success: true,
-        redirectTo: "/",
+        redirectTo: "/auth/check-email",
+      };
+    } catch (error) {
+      console.error("Login request failed:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to send login link",
+          name: "Login Error",
+        },
       };
     }
-    return {
-      success: false,
-      error: {
-        message: "Login failed",
-        name: "Invalid email or password",
-      },
-    };
   },
+
   logout: async () => {
     localStorage.removeItem(TOKEN_KEY);
     return {
@@ -37,31 +33,39 @@ export const authProvider: AuthProvider = {
       redirectTo: "/login",
     };
   },
+
   onError: async (error) => {
-    console.error(error);
+    console.error("Auth request failed:", error);
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      localStorage.removeItem(TOKEN_KEY);
+      return {
+        logout: true,
+        redirectTo: "/login",
+        error: {
+          message: "Authentication failed",
+          name: "Authentication Error"
+        }
+      };
+    }
     return { error };
   },
+
   check: async () => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
-      axiosInstance.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${token}`;
+      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       return {
         authenticated: true,
       };
     }
-
     return {
       authenticated: false,
-      error: {
-        message: "Check failed",
-        name: "Token not found",
-      },
       logout: true,
       redirectTo: "/login",
     };
   },
+
   getPermissions: async () => null,
   getIdentity: async () => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -69,16 +73,53 @@ export const authProvider: AuthProvider = {
       return null;
     }
 
-    const { data, status } = await strapiAuthHelper.me(token);
-    if (status === 200) {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       const { id, username, email } = data;
       return {
         id,
         name: username,
         email,
       };
+    } catch (error) {
+      return null;
+    }
+  },
+};
+
+export const verifyMagicLink = async (token: string) => {
+  try {
+    const { data } = await axios.post(`${API_URL}/api/auth/magic-link/verify`, { token });
+
+    if (data.jwt) {
+      localStorage.setItem(TOKEN_KEY, data.jwt);
+      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${data.jwt}`;
+
+      return {
+        success: true,
+        redirectTo: "/",
+      };
     }
 
-    return null;
-  },
+    return {
+      success: false,
+      error: {
+        message: "Invalid token",
+        name: "Verification Error",
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message: "Token verification failed",
+        name: "Verification Error",
+      },
+    };
+  }
 };
