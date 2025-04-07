@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { ShapeProps } from "./useCanvas";
+import {TOKEN_KEY} from "../constants";
 
 interface UseRealTimeCanvasProps {
   canvasId: string;
@@ -12,19 +13,32 @@ interface CanvasState {
   participantCount: number;
 }
 
+interface Participant {
+  id: string;
+  email: string;
+  isOwner: boolean;
+}
+
+
 const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [shapes, setShapes] = useState<ShapeProps[]>([]);
   const [participantCount, setParticipantCount] = useState(1);
   const [participantId, setParticipantId] = useState("");
   const [isConnected, setIsConnected] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [canvasOwner, setCanvasOwner] = useState<string | null>(null);
+
 
   // Initialize socket connection
   useEffect(() => {
     console.log(`Connecting to ${strapiBaseUrl}`);
+    const token = localStorage.getItem(TOKEN_KEY);
+
     const socketInstance = io(`${strapiBaseUrl}`, {
       transports: ["websocket"],
-      reconnection: true
+      reconnection: true,
+      auth: { token }
     });
 
     setSocket(socketInstance);
@@ -43,10 +57,32 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
       setIsConnected(false);
     });
 
-    socketInstance.on("canvas-state", (state: CanvasState) => {
+    socketInstance.on("participants-updated", (data: {
+      participants: { id: string; email: string; isOwner: boolean }[],
+      owner: string | null
+    }) => {
+      setParticipants(data.participants);
+      setCanvasOwner(data.owner);
+    });
+
+    socketInstance.on("canvas-state", (state: CanvasState & {
+      participants: Participant[],
+      owner: string | null
+    }) => {
       console.log("Received canvas state:", state);
       setShapes(state.shapes);
       setParticipantCount(state.participantCount);
+      setParticipants(state.participants || []);
+      setCanvasOwner(state.owner);
+    });
+
+    socketInstance.on("participants-updated", (data: {
+      participants: Participant[],
+      owner: string | null
+    }) => {
+      console.log("Participants updated:", data);
+      setParticipants(data.participants);
+      setCanvasOwner(data.owner);
     });
 
     socketInstance.on("participant-count", (count: number) => {
@@ -58,19 +94,6 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
       console.log("Shape added:", shape);
       setShapes(prevShapes => [...prevShapes, shape]);
     });
-
-    // socketInstance.on("line-updated", ({ lineId, points }: { lineId: string; points: number[] }) => {
-    //   console.log("Line updated:", lineId, points);
-    //   setLines(prevLines => {
-    //     const lineIndex = prevLines.findIndex(line => line.id === lineId);
-    //     if (lineIndex !== -1) {
-    //       const newLines = [...prevLines];
-    //       newLines[lineIndex] = { ...newLines[lineIndex], points };
-    //       return newLines;
-    //     }
-    //     return prevLines;
-    //    });
-    // });
 
     socketInstance.on("shape-updated", ({ shapeId, updatedShape }: { shapeId: string; updatedShape: ShapeProps }) => {
       console.log("Shape updated:", shapeId, updatedShape);
@@ -157,6 +180,8 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     drawShape,
     updateShape,
     clearCanvas,
+    participants,
+    canvasOwner,
   };
 };
 

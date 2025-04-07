@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
+import { useGetIdentity } from "@refinedev/core";
 import Konva from "konva";
 import { Stage, Layer, Line, Rect, Circle, Arrow, Text } from "react-konva";
 import useCanvas, {ShapeProps} from "../hooks/useCanvas";
@@ -15,6 +16,8 @@ import {
     FaLock
 } from "react-icons/fa";
 import PrivacySettings from "./PrivacySettings";
+import ParticipantList from "./ParticipantList";
+
 
 const MAX_PARTICIPANTS = 4;
 
@@ -41,6 +44,8 @@ const Canvas: React.FC = () => {
         setTextFont,
         textWeight,
         setTextWeight,
+        participants,
+        canvasOwner,
     } = useCanvas();
 
     const stageRef = useRef<Konva.Stage>(null);
@@ -50,6 +55,7 @@ const Canvas: React.FC = () => {
     const [reconnectTimer, setReconnectTimer] = useState(30);
     const [showTextControls, setShowTextControls] = useState(false);
     const [privacySettingsOpen, setPrivacySettingsOpen] = useState(false);
+    const { data: identity } = useGetIdentity<{ email: string }>();
 
     // Handle resize
     useEffect(() => {
@@ -354,10 +360,21 @@ const Canvas: React.FC = () => {
                     <span className="hidden md:inline">Privacy</span>
                 </button>
 
-                <ParticipantDisplay
-                    participantCount={participantCount}
-                    maxParticipants={MAX_PARTICIPANTS}
-                />
+                <div className="hidden md:block">
+                    <ParticipantList
+                        participants={participants}
+                        currentUserEmail={identity?.email}
+                    />
+                </div>
+
+                {/* Keep the mobile version simple with just the count */}
+                <div className="md:hidden">
+                    <ParticipantDisplay
+                        participantCount={participantCount}
+                        maxParticipants={MAX_PARTICIPANTS}
+                    />
+                </div>
+
                 <div className="border-l border-gray-300 h-8 mx-1 hidden md:block" />
 
                 <button
