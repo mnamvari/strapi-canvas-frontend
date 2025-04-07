@@ -93,7 +93,7 @@ const Canvas: React.FC = () => {
         if (canvasSettings) {
             setDownloadDisabled(canvasSettings.disableDownload && !isOwner);
         }
-    }, [canvasSettings, isOwner]);
+      }, [canvasSettings, isOwner]);
 
     // Toggle text controls visible when text tool selected
     useEffect(() => {

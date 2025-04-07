@@ -110,13 +110,18 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
 
     socketInstance.on("canvas-state", (state: CanvasState & {
       participants: Participant[],
-      owner: string | null
+      owner: string | null,
+      settings: CanvasSettings
     }) => {
       console.log("Received canvas state:", state);
       setShapes(state.shapes);
       setParticipantCount(state.participantCount);
       setParticipants(state.participants || []);
       setCanvasOwner(state.owner);
+      if (state.settings) {
+        console.log("Applying settings from server:", state.settings);
+        setCanvasSettings(state.settings);
+      }
     });
 
     socketInstance.on("participants-updated", (data: {
@@ -151,7 +156,6 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     });
 
     socketInstance.on('shape-z-index-assigned', ({ shapeId, zIndex }) => {
-      console.log("z-index assigned:", zIndex);
       setShapes(prevShapes =>
           prevShapes.map(shape =>
               shape.id === shapeId ? { ...shape, zIndex } : shape
@@ -160,7 +164,6 @@ const useRealTimeCanvas = ({ canvasId, strapiBaseUrl }: UseRealTimeCanvasProps) 
     });
 
     socketInstance.on("canvas-cleared", () => {
-      console.log("Canvas cleared");
       setShapes([]);
     });
 
