@@ -2,7 +2,9 @@ import type { AuthProvider } from "@refinedev/core";
 import axios from "axios";
 import { API_URL, TOKEN_KEY } from "./constants";
 
-export const axiosInstance = axios.create();
+export const axiosInstance = axios.create({
+  xsrfCookieName: null as unknown as string | undefined,
+});
 
 export const authProvider: AuthProvider = {
   login: async ({ email }) => {
