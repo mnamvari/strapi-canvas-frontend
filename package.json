@@ -64,5 +64,10 @@
   },
   "refine": {
     "projectId": "bbfHdX-PnE04n-rToIo0"
+  },
+  "overrides": {
+    "@ant-design/pro-layout": {
+      "path-to-regexp": "^8.4.0"
+    }
   }
 }
